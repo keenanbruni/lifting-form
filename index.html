@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f10">
+  <meta name="description" content="An adjustable 2D back-squat geometry model based on your proportions.">
+  <title>Squat Geometry Lab</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0f10'/%3E%3Cpath d='M5 9v14M27 9v14M3 12h26' stroke='%23d8ff65' stroke-width='3'/%3E%3Ccircle cx='16' cy='12' r='3' fill='%23ff7849'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">PERSONAL GEOMETRY MODEL</p>
+      <h1>Squat Geometry Lab</h1>
+    </div>
+    <div class="model-note"><span class="model-dot"></span>2D articulated model · inches</div>
+  </header>
+
+  <main>
+    <section class="workspace" aria-label="Interactive squat visualization">
+      <div class="visual-panel">
+        <div class="visual-head">
+          <div>
+            <span id="stage" class="stage">Standing lockout</span>
+            <span id="positionReadout" class="position-readout">High-bar · 225 lb</span>
+          </div>
+          <button id="reset" class="text-button" type="button">Reset model</button>
+        </div>
+
+        <svg id="squatSvg" viewBox="0 0 760 650" role="img" aria-labelledby="vizTitle vizDesc">
+          <title id="vizTitle">Side and front views of an articulated back squat</title>
+          <desc id="vizDesc">Animated body segments keep fixed lengths while the bar tracks over midfoot.</desc>
+          <defs>
+            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path d="M32 0H0V32" fill="none" stroke="#263032" stroke-width="1"/>
+            </pattern>
+            <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <rect width="760" height="650" rx="18" fill="#111718"/>
+          <rect width="760" height="650" rx="18" fill="url(#grid)" opacity=".55"/>
+          <g id="pathsLayer"></g>
+          <g id="guidesLayer"></g>
+          <g id="bodyLayer"></g>
+          <g id="labelsLayer"></g>
+          <g id="frontLayer"></g>
+        </svg>
+
+        <div class="transport">
+          <button id="playPause" class="play-button" type="button" aria-label="Pause animation">
+            <span id="playIcon" aria-hidden="true">Ⅱ</span>
+          </button>
+          <label class="timeline-label" for="timeline">Repetition timeline</label>
+          <input id="timeline" type="range" min="0" max="1000" value="0" aria-label="Scrub through the squat repetition">
+          <output id="timelineOutput" for="timeline">0%</output>
+        </div>
+
+        <div class="angle-strip" aria-label="Current joint angles">
+          <div><span>Torso</span><strong id="torsoAngle">0°</strong><small>from vertical</small></div>
+          <div><span>Shin</span><strong id="shinAngle">0°</strong><small>from vertical</small></div>
+          <div><span>Knee</span><strong id="kneeAngle">0°</strong><small>flexion</small></div>
+          <div><span>Hip</span><strong id="hipAngle">0°</strong><small>flexion</small></div>
+          <div><span>Ankle</span><strong id="ankleAngle">0°</strong><small>dorsiflexion</small></div>
+        </div>
+      </div>
+
+      <aside class="controls-panel" aria-label="Squat controls">
+        <section class="control-section primary-controls">
+          <div class="section-heading">
+            <h2>Movement</h2>
+            <span id="balanceBadge" class="badge">BAR ±0.0 IN</span>
+          </div>
+
+          <label class="range-control">
+            <span><b>Squat depth</b><output id="depthOut">100%</output></span>
+            <input id="depth" data-setting="depth" type="range" min="0.7" max="1.15" step="0.01" value="1">
+          </label>
+
+          <div class="two-up">
+            <label class="range-control">
+              <span><b>Stance width</b><output id="stanceOut">18 in</output></span>
+              <input id="stance" data-setting="stance" type="range" min="10" max="28" step="0.5" value="18">
+            </label>
+            <label class="range-control">
+              <span><b>Toe angle</b><output id="toeAngleOut">20°</output></span>
+              <input id="toeAngle" data-setting="toeAngle" type="range" min="0" max="40" step="1" value="20">
+            </label>
+          </div>
+
+          <fieldset>
+            <legend>Bar position</legend>
+            <div class="segmented">
+              <label><input type="radio" name="barPosition" value="high" checked><span>High-bar</span></label>
+              <label><input type="radio" name="barPosition" value="low"><span>Low-bar</span></label>
+            </div>
+          </fieldset>
+
+          <label class="range-control">
+            <span><b>Ankle dorsiflexion available</b><output id="dorsiflexionOut">30°</output></span>
+            <input id="dorsiflexion" data-setting="dorsiflexion" type="range" min="15" max="40" step="1" value="30">
+          </label>
+
+          <div class="two-up selects">
+            <label><span>Heel elevation</span>
+              <select id="heelElevation" data-setting="heelElevation">
+                <option value="0">Barefoot / flat</option>
+                <option value="0.5">0.5 in</option>
+                <option value="0.75" selected>0.75 in</option>
+                <option value="1">1.0 in</option>
+              </select>
+            </label>
+            <label><span>Barbell load</span>
+              <div class="input-suffix"><input id="load" data-setting="load" type="number" min="45" max="1000" step="5" value="225"><span>lb</span></div>
+            </label>
+          </div>
+
+          <label class="range-control compact-range">
+            <span><b>Animation speed</b><output id="speedOut">1.0×</output></span>
+            <input id="speed" data-setting="speed" type="range" min="0.25" max="2" step="0.25" value="1">
+          </label>
+        </section>
+
+        <section class="explanation" aria-live="polite">
+          <p class="eyebrow">WHAT THE GEOMETRY IS DOING</p>
+          <div id="explanationText"></div>
+        </section>
+
+        <details class="control-section">
+          <summary><span>Guides & paths</span><span class="summary-hint">Overlay</span></summary>
+          <div class="toggle-grid">
+            <label><input type="checkbox" data-guide="barPath" checked><span>Bar path</span></label>
+            <label><input type="checkbox" data-guide="midfoot" checked><span>Midfoot</span></label>
+            <label><input type="checkbox" data-guide="hipPath"><span>Hip path</span></label>
+            <label><input type="checkbox" data-guide="kneePath"><span>Knee path</span></label>
+            <label><input type="checkbox" data-guide="segmentAngles" checked><span>Segment angles</span></label>
+            <label><input type="checkbox" data-guide="jointAngles" checked><span>Joint angles</span></label>
+          </div>
+        </details>
+
+        <details class="control-section" open>
+          <summary><span>Your measurements</span><span class="summary-hint">Editable</span></summary>
+          <p class="details-note"><span class="key measured-key"></span>Measured by you <span class="key estimated-key"></span>Estimated model input</p>
+          <div id="anthroInputs" class="measurement-grid"></div>
+          <p id="derivedNote" class="derived-note"></p>
+        </details>
+      </aside>
+    </section>
+
+    <footer>
+      <p>This explores mechanically valid 2D positions; it is not a form diagnosis or medical advice.</p>
+      <p>Keep the bar near midfoot, then compare how proportion and setup choices redistribute the angles.</p>
+    </footer>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
